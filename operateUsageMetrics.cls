@@ -19,19 +19,6 @@ global class operateUsageMetrics implements Database.Batchable<sObject> {
 		List<Metric__c> allNewMetrics = new List<Metric__c>();
 		//keys of potential Daily Customer Metric records that we want to query for.
 		Set<String> keySet = new Set<String>();
-		//String[] packageList = new String[]{};
-		//Removed Inefficient Query as returns all records from the DB each Batch, will query once we know which Metrics need upserting.
-		/*
-		// Retrieve a list of current Customer records stored in the org
-		List<Daily_Customer_Metric__c> currentCustomers =
-		[SELECT Key__c FROM Daily_Customer_Metric__c];
-		if (!(currentCustomers.isEmpty())) {
-			// Put all current Customer data into allDailyCustomers Map
-			for (Daily_Customer_Metric__c c1 : currentCustomers) {
-				allDailyCustomers.put(c1.Key__c, c1);
-			}
-		}
-		*/
 		for (MetricsDataFile f : fileList) {
 			// Split MetricsDataFile
 			String[] arrayOfMetrics = ((f.MetricsDataFile).toString()).split('\n');
@@ -46,21 +33,6 @@ global class operateUsageMetrics implements Database.Batchable<sObject> {
 					String key = f.NamespacePrefix+' - '+metricsValues[0] + ' - ' + (f.MetricsStartDate).format();
 					//add the key to a set, we will use this to query for existing Customer records later.
 					keySet.add(key);
-					//DML Statemment in loop is not best practice and will hit limits.  Will insert all Daily Customer Metric files at onece later.
-					/*
-					if (!(allDailyCustomers.containsKey(key))) {
-						// Insert new customer into Map and Database
-						Daily_Customer_Metric__c dcm = new Daily_Customer_Metric__c();
-						dcm.Key__c = key;
-						dcm.Date__c = f.MetricsStartDate;
-						dcm.Org_ID__c = metricsValues[0];
-						dcm.Application_Name__c = f.NamespacePrefix;
-						dcm.Name = metricsValues[1] + ' - ' +
-						(f.MetricsStartDate.date()).format();
-						insert dcm;
-						allDailyCustomers.put(key, dcm);
-					}
-					*/
 					// Perform data insertion of metrics
 					Metric__c newMetric = new Metric__c();
 					// Visualforce Page Metric
@@ -70,8 +42,6 @@ global class operateUsageMetrics implements Database.Batchable<sObject> {
 						newMetric.Resource_Name__c = f.NamespacePrefix+' - '+(f.MetricsStartDate).date() + ' - ' +
 						metricsValues[0] + ' - ' + metricsValues[5];
 						newMetric.RecordTypeId = rMap.get('Visualforce Page');
-						//we don't know this yet, once we have generated all the metrics we will go back and update before upsert.
-						//newMetric.Daily_Customer_Metric__c = (allDailyCustomers.get(key)).id;
 						newMetric.Org_ID__c = metricsValues[0];
 						newMetric.Namespace__c = f.NamespacePrefix;
 						newMetric.Date__c = f.MetricsStartDate;
@@ -87,8 +57,6 @@ global class operateUsageMetrics implements Database.Batchable<sObject> {
 						newMetric.Resource_Name__c = f.NamespacePrefix+' - '+(f.MetricsStartDate).date() + ' - ' +
 						metricsValues[0] + ' - ' + metricsValues[5];
 						newMetric.RecordTypeId = rMap.get('Custom Object');
-						//we don't know this yet, once we have generated all the metrics we will go back and update before upsert.
-						//newMetric.Daily_Customer_Metric__c = (allDailyCustomers.get(key)).id;
 						newMetric.Org_ID__c = metricsValues[0];
 						newMetric.Namespace__c = f.NamespacePrefix;
 						newMetric.Date__c = f.MetricsStartDate;
@@ -114,7 +82,7 @@ global class operateUsageMetrics implements Database.Batchable<sObject> {
 				String cleanValues = s.remove('"');
 				String[] metricsValues = cleanValues.split(',');
 				// (Check allDailyCustomers Map)
-				// Key is OrgID + Date
+				// Key is Namespace + OrgID + Date
 				//Check the file has some data, there seems to be blank rows returned in the results.
 				if(metricsValues.size() > 1){
 					String key = f.NamespacePrefix+' - '+metricsValues[0] + ' - ' + (f.MetricsStartDate).format();
